@@ -41,7 +41,7 @@ func BuildErrorCatcher(sentryDSN string) func(c *web.C, h http.Handler) http.Han
 
 				switch err := err.(type) {
 				case HttpError:
-					http.Error(w, err.Message, err.StatusCode)
+					err.WriteResponse(w)
 					return
 				default:
 					http.Error(w, http.StatusText(500), 500)
@@ -62,6 +62,18 @@ type HttpError struct {
 	Message    string
 }
 
+func (h HttpError) Error() string {
+	return h.Message
+}
+
+func (h HttpError) WriteResponse(w http.ResponseWriter) {
+	http.Error(w, h.Message, h.StatusCode)
+}
+
+func MakeError(statusCode int, format string, params ...interface{}) error {
+	return HttpError{statusCode, fmt.Sprintf(format, params...)}
+}
+
 func ThrowError(statusCode int, format string, params ...interface{}) {
-	panic(HttpError{statusCode, fmt.Sprintf(format, params...)})
+	panic(MakeError(statusCode, format, params...))
 }

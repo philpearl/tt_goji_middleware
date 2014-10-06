@@ -41,6 +41,7 @@ func BuildErrorCatcher(sentryDSN string) func(c *web.C, h http.Handler) http.Han
 
 				switch err := err.(type) {
 				case HttpError:
+					log.Printf("Return response for error %s", err.Message)
 					err.WriteResponse(w)
 					return
 				default:

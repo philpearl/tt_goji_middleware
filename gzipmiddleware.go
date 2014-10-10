@@ -8,7 +8,7 @@ import (
 	"github.com/zenazn/goji/web"
 )
 
-type GzipResponseWriter struct {
+type gzipResponseWriter struct {
 	// The http response we are wrapping
 	Wrapped http.ResponseWriter
 	// Have we written a status code and header?
@@ -19,22 +19,22 @@ type GzipResponseWriter struct {
 	status int
 }
 
-func NewGzipResponseWriter(wrapped http.ResponseWriter) *GzipResponseWriter {
-	return &GzipResponseWriter{
+func newGzipResponseWriter(wrapped http.ResponseWriter) *gzipResponseWriter {
+	return &gzipResponseWriter{
 		Wrapped: wrapped,
 		writer:  gzip.NewWriter(wrapped),
 	}
 }
 
-func (w *GzipResponseWriter) Close() {
+func (w *gzipResponseWriter) Close() {
 	w.writer.Close()
 }
 
-func (w *GzipResponseWriter) Header() http.Header {
+func (w *gzipResponseWriter) Header() http.Header {
 	return w.Wrapped.Header()
 }
 
-func (w *GzipResponseWriter) Write(data []byte) (int, error) {
+func (w *gzipResponseWriter) Write(data []byte) (int, error) {
 	// We can't read what's written to our Wrapped response, so we need to track things ourselves
 	if !w.headerWritten {
 		w.WriteHeader(http.StatusOK)
@@ -46,7 +46,7 @@ func (w *GzipResponseWriter) Write(data []byte) (int, error) {
 	return w.Wrapped.Write(data)
 }
 
-func (w *GzipResponseWriter) WriteHeader(status int) {
+func (w *gzipResponseWriter) WriteHeader(status int) {
 	if !w.headerWritten {
 		w.headerWritten = true
 		w.status = status
@@ -76,11 +76,16 @@ func acceptsGzip(r *http.Request) bool {
 	return false
 }
 
+/*
+Simple GZIP middleware
+
+GZIPs GET 200 OK responses if the request Accept-Encoding includes gzip.  Sets Content-Encoding to "gzip".
+*/
 func GzipMiddleWare(c *web.C, h http.Handler) http.Handler {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		var gw *GzipResponseWriter
+		var gw *gzipResponseWriter
 		if acceptsGzip(r) {
-			gw = NewGzipResponseWriter(w)
+			gw = newGzipResponseWriter(w)
 			w = gw
 		}
 		h.ServeHTTP(w, r)

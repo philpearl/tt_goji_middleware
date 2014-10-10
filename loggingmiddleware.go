@@ -8,6 +8,15 @@ import (
 	"github.com/zenazn/goji/web"
 )
 
+/*
+Middleware that logs responses.
+
+The output format is:
+
+<remote addr> - <method> <url> <status code> <response time ms>
+
+Remote address is taken from X-Forwarded-For & X-Forwarded-Port if present
+*/
 func LoggingMiddleWare(c *web.C, h http.Handler) http.Handler {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

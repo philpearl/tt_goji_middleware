@@ -6,8 +6,8 @@ import (
 	"github.com/zenazn/goji/web"
 )
 
+// Build a middleware that always sets c.Env[key] = value
 func BuildEnvSet(key string, value interface{}) func(c *web.C, h http.Handler) http.Handler {
-	// Build a middleware that always set c.Env[key] = value
 	return func(c *web.C, h http.Handler) http.Handler {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			c.Env[key] = value
@@ -17,8 +17,8 @@ func BuildEnvSet(key string, value interface{}) func(c *web.C, h http.Handler) h
 	}
 }
 
+// Build a middleware that always sets c.Env[key] = *value
 func BuildUpdateableSet(key string, value *interface{}) func(c *web.C, h http.Handler) http.Handler {
-	// Build a middleware that always set c.Env[key] = value
 	return func(c *web.C, h http.Handler) http.Handler {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			c.Env[key] = *value

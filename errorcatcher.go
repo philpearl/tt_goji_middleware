@@ -13,6 +13,15 @@ import (
 	"github.com/kisielk/raven-go/raven"
 )
 
+/*
+Middleware that catches panics, and:
+
+- logs them
+- optionally reports them to sentry - pass in "" if you don't want this
+- sends a 500 response
+
+You can also use ThrowError() to raise an error that this middleware will catch
+*/
 func BuildErrorCatcher(sentryDSN string) func(c *web.C, h http.Handler) http.Handler {
 	var sentryClient *raven.Client
 	if sentryDSN != "" {
@@ -58,6 +67,11 @@ func BuildErrorCatcher(sentryDSN string) func(c *web.C, h http.Handler) http.Han
 	}
 }
 
+/*
+An error that encapsulates an HTTP status code and message.
+
+Use ThrowError() to build an HttpError and raise it as a panic
+*/
 type HttpError struct {
 	StatusCode int
 	Message    string

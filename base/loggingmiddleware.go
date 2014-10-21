@@ -1,4 +1,4 @@
-package tt_goji_middleware
+package base
 
 import (
 	"log"

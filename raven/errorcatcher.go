@@ -1,4 +1,7 @@
-package tt_goji_middleware
+/*
+Middleware than depend on github.com/kisielk/raven-go/raven
+*/
+package raven
 
 import (
 	"fmt"
@@ -16,11 +19,12 @@ import (
 /*
 Middleware that catches panics, and:
 
-- logs them
-- optionally reports them to sentry - pass in "" if you don't want this
-- sends a 500 response
+	- logs them
+	- optionally reports them to sentry - pass in "" if you don't want this
+	- sends a 500 response
 
-You can also use ThrowError() to raise an error that this middleware will catch
+You can also use ThrowError() to raise an error that this middleware will catch, for example
+if you want an error to be reported to sentry
 */
 func BuildErrorCatcher(sentryDSN string) func(c *web.C, h http.Handler) http.Handler {
 	var sentryClient *raven.Client

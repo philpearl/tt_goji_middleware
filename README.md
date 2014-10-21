@@ -2,7 +2,7 @@
 
 Some simple Goji middleware I've found useful.  Find the documentation at http://godoc.org/github.com/philpearl/tt_goji_middleware.
 
-[![Build Status](https://travis-ci.org/philpearl/tt_goji_middleware.svg)](https://travis-ci.org/philpearl/tt_goji_middleware)
+[![Build Status](https://travis-ci.org/philpearl/tt_goji_middleware.svg)](https://travis-ci.org/philpearl/tt_goji_middleware) [![GoDoc](https://godoc.org/github.com/philpearl/tt_goji_middleware?status.svg)](https://godoc.org/github.com/philpearl/tt_goji_middleware)
 
 The middleware is arranged in packages based on external dependencies
 

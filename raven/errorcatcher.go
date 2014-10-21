@@ -1,5 +1,5 @@
 /*
-Middleware than depend on github.com/kisielk/raven-go/raven
+Package raven contains middleware than depends on github.com/kisielk/raven-go/raven
 */
 package raven
 

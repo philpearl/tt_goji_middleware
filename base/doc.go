@@ -1,4 +1,4 @@
 /*
-Middleware in this package have no external dependencies except Goji
+Package base contains middleware that has no external dependencies except Goji
 */
 package base

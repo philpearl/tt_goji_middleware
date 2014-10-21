@@ -1,5 +1,5 @@
 /*
-Middleware packages that depend on github.com/garyburd/redigo/redis
+Package redis contains middleware that depends on github.com/garyburd/redigo/redis
 */
 package redis
 

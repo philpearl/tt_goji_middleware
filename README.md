@@ -19,6 +19,7 @@ In base:
 - Error catching and reporting
 - Logging ('fraid I don't like the Goji version)
 - A very simple GZIP
+- Strip a prefix from the url
 
 In raven:
 - Catch panics, log them, send responses and report them to Sentry

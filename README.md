@@ -20,6 +20,7 @@ In base:
 - Logging ('fraid I don't like the Goji version)
 - A very simple GZIP
 - Strip a prefix from the url
+- Session middleware.
 
 In raven:
 - Catch panics, log them, send responses and report them to Sentry
@@ -27,3 +28,4 @@ In raven:
 In redis:
 - Ensure there's a redis connection in c.Env["redis"].  Connections come from a pool and are not opened until used.
 - A Redis based rate limiter that issues a single command to Redis per request.
+- A Redis based session store for the base session middleware

@@ -192,14 +192,25 @@ func (sh *MemorySessionHolder) Save(c web.C, session *Session) error {
 /*
 BuildSessionMiddleware builds middleware with the provided SessionHolder.  The middleware
 
-- adds the SessionHolder to c.Env["sessionholder"] so application code can create and delete sessions
-- finds the session associated with the request (if any) and puts it in c.Env["session"]
-- saves the session if dirty and the request is processed without a panic
+ - adds the SessionHolder to c.Env["sessionholder"] so application code can create and delete sessions
+ - finds the session associated with the request (if any) and puts it in c.Env["session"]
+ - saves the session if dirty and the request is processed without a panic
+
+Add the middleware as follows
+
+  mux := web.New()
+  mux.Use(redis.BuildRedis(":6379"))
+  sh := redis.NewSessionHolder()
+  mux.Use(redis.BuildSessionMiddleware(sh))
+  // Add handlers that use sessions
 
 The middleware does not create new sessions.  To create a session do the following.
 
-  sh := c.Env["sessionholder"].(SessionHolder)
-  session := sh.Create()
+  session := c.Env["session"].(*Session)
+  if session != nil {
+	  sh := c.Env["sessionholder"].(SessionHolder)
+	  session := sh.Create()
+  }
 */
 func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) http.Handler {
 	return func(c *web.C, h http.Handler) http.Handler {

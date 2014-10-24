@@ -178,6 +178,7 @@ func (sh *MemorySessionHolder) Get(c web.C, r *http.Request) (*Session, error) {
 
 func (sh *MemorySessionHolder) Destroy(c web.C, session *Session) error {
 	delete(sh.store, session.Id())
+	delete(c.Env, "session")
 	return nil
 }
 

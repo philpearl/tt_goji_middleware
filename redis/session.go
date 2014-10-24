@@ -65,6 +65,7 @@ Destroy deletes a session from redis
 */
 func (sh *SessionHolder) Destroy(c web.C, session *base.Session) error {
 	sessionId := session.Id()
+	delete(c.Env, "session")
 	conn := c.Env["redis"].(redigo.Conn)
 
 	_, err := conn.Do("DEL", sessionKey(sessionId))

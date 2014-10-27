@@ -14,7 +14,7 @@ func TestSession(t *testing.T) {
 		Env: make(map[string]interface{}, 0),
 	}
 
-	sh := BaseSessionHolder{Timeout: 30}
+	sh := NewBaseSessionHolder(30)
 
 	s := sh.Create(c)
 
@@ -63,7 +63,7 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 		Env: make(map[string]interface{}, 0),
 	}
 
-	sh := BaseSessionHolder{Timeout: 30}
+	sh := NewBaseSessionHolder(30)
 
 	s := sh.Create(c)
 
@@ -81,7 +81,7 @@ func TestBaseSessionHolderGetSessionId(t *testing.T) {
 		Env: make(map[string]interface{}, 0),
 	}
 
-	sh := BaseSessionHolder{Timeout: 30}
+	sh := NewBaseSessionHolder(30)
 
 	s := sh.Create(c)
 

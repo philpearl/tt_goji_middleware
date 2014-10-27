@@ -2,6 +2,7 @@ package base
 
 import (
 	"errors"
+	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -17,7 +18,7 @@ var (
 Session represents a web session
 */
 type Session struct {
-	Idd    string
+	id     string
 	dirty  bool
 	Values map[string]interface{}
 }
@@ -26,7 +27,11 @@ type Session struct {
 Get the id for this session
 */
 func (s *Session) Id() string {
-	return s.Idd
+	return s.id
+}
+
+func (s *Session) SetId(id string) {
+	s.id = id
 }
 
 /*
@@ -106,7 +111,7 @@ Create builds a session object, adds it to c.Env["session"] and marks it as dirt
 */
 func (sh *BaseSessionHolder) Create(c web.C) *Session {
 	session := &Session{
-		Idd:    generateSessionId(),
+		id:     generateSessionId(),
 		Values: make(map[string]interface{}, 0),
 		dirty:  true,
 	}
@@ -120,7 +125,7 @@ GetSessionId extracts the session ID from a request if one is present.
 Note this is not part of the SessionHolder interface - it is intended to
 be used as a building block by SessionHolder implementations
 */
-func (hs *BaseSessionHolder) GetSessionId(r *http.Request) string {
+func (sh *BaseSessionHolder) GetSessionId(r *http.Request) string {
 	cookie, err := r.Cookie("sessionid")
 	if err != nil {
 		return ""
@@ -190,6 +195,14 @@ func (sh *MemorySessionHolder) Save(c web.C, session *Session) error {
 	return nil
 }
 
+func SessionFromEnv(c *web.C) (*Session, bool) {
+	s, ok := c.Env["session"]
+	if ok && s != nil {
+		return s.(*Session), true
+	}
+	return nil, false
+}
+
 /*
 BuildSessionMiddleware builds middleware with the provided SessionHolder.  The middleware
 
@@ -215,22 +228,30 @@ The middleware does not create new sessions.  To create a session do the followi
 */
 func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) http.Handler {
 	return func(c *web.C, h http.Handler) http.Handler {
-		// Always store the session holder in context so that handlers can create or destroy sessions
-		c.Env["sessionholder"] = sh
-
 		handler := func(w http.ResponseWriter, r *http.Request) {
+			// Always store the session holder in context so that handlers can create or destroy sessions
+			c.Env["sessionholder"] = sh
+
 			session, err := sh.Get(*c, r)
 			if err == nil {
 				session.SetDirty(false)
 				c.Env["session"] = session
+			} else {
+				if err != ErrorSessionNotFound {
+					log.Printf("error loading session %v", err)
+					http.Error(w, "Failed to load session data", http.StatusServiceUnavailable)
+				}
 			}
 			h.ServeHTTP(w, r)
 
 			// TODO: should this be saved via defer() so it even happens after a panic
 			// TODO: retrieve from response?
-			session = c.Env["session"].(*Session)
-			if session != nil && session.IsDirty() {
-				sh.Save(*c, session)
+			session, ok := SessionFromEnv(c)
+			if ok && session.IsDirty() {
+				err := sh.Save(*c, session)
+				if err != nil {
+					log.Printf("Failed to save session - %v", err)
+				}
 			}
 		}
 		return http.HandlerFunc(handler)

@@ -16,6 +16,11 @@ const (
 	DEFAULT_SESSION_TIMEOUT = 30 * 24 * 60 * 60
 )
 
+func init() {
+	// so we can encode the session properly
+	gob.Register(map[string]interface{}{})
+}
+
 /*
 SessionHolder is a redis-backed session store that gob-encodes sessions.
 
@@ -48,7 +53,14 @@ func (sh *SessionHolder) Get(c web.C, r *http.Request) (*base.Session, error) {
 
 	conn := c.Env["redis"].(redigo.Conn)
 
-	sessionBytes, err := redigo.Bytes(conn.Do("GET", sessionKey(sessionId)))
+	sess, err := conn.Do("GET", sessionKey(sessionId))
+	if err != nil {
+		return nil, err
+	}
+	if sess == nil {
+		return nil, base.ErrorSessionNotFound
+	}
+	sessionBytes, err := redigo.Bytes(sess, err)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +68,9 @@ func (sh *SessionHolder) Get(c web.C, r *http.Request) (*base.Session, error) {
 	dec := gob.NewDecoder(bytes.NewReader(sessionBytes))
 	var session base.Session
 	err = dec.Decode(&session)
+	if err == nil {
+		session.SetId(sessionId)
+	}
 
 	return &session, err
 }

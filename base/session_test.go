@@ -47,6 +47,11 @@ func TestSession(t *testing.T) {
 		t.Fatalf("not the cheese we were hoping for. %v %v", ok, cheese)
 	}
 
+	_, ok = s.Get("hat")
+	if ok {
+		t.Fatalf("Get returned ok when value is not set")
+	}
+
 	s2 := sh.Create(c)
 	if s.Id() == s2.Id() {
 		t.Fatalf("session IDs not unique %s == %s ", s.Id(), s2.Id())

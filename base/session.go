@@ -1,8 +1,10 @@
 package base
 
 import (
+	crand "crypto/rand"
 	"errors"
 	"log"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -66,6 +68,14 @@ func (s *Session) Put(key string, value interface{}) {
 }
 
 /*
+Delete a value from the session
+*/
+func (s *Session) Del(key string) {
+	delete(s.Values, key)
+	s.dirty = true
+}
+
+/*
 SessionHolder is an interface for a session repository.
 */
 type SessionHolder interface {
@@ -103,7 +113,20 @@ type SessionHolder interface {
 BaseSessionHolder is a building block you can use to build a SessionHolder implementation
 */
 type BaseSessionHolder struct {
-	Timeout int
+	Timeout    int
+	RandSource rand.Source
+}
+
+func NewBaseSessionHolder(timeout int) BaseSessionHolder {
+	seed, err := crand.Int(crand.Reader, big.NewInt(0x7FFFFFFFFFFFFFFF))
+	if err != nil {
+		log.Panicf("Could not get a random seed for session generation, %v", err)
+	}
+
+	return BaseSessionHolder{
+		Timeout:    timeout,
+		RandSource: rand.NewSource(seed.Int64()),
+	}
 }
 
 /*
@@ -111,7 +134,7 @@ Create builds a session object, adds it to c.Env["session"] and marks it as dirt
 */
 func (sh *BaseSessionHolder) Create(c web.C) *Session {
 	session := &Session{
-		id:     generateSessionId(),
+		id:     sh.generateSessionId(),
 		Values: make(map[string]interface{}, 0),
 		dirty:  true,
 	}
@@ -133,9 +156,9 @@ func (sh *BaseSessionHolder) GetSessionId(r *http.Request) string {
 	return cookie.Value
 }
 
-func generateSessionId() string {
-	a := uint64(rand.Int63())
-	b := uint64(rand.Int63())
+func (sh *BaseSessionHolder) generateSessionId() string {
+	a := uint64(sh.RandSource.Int63())
+	b := uint64(sh.RandSource.Int63())
 
 	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36)
 }
@@ -165,10 +188,8 @@ type MemorySessionHolder struct {
 
 func NewMemorySessionHolder(timeout int) SessionHolder {
 	return &MemorySessionHolder{
-		BaseSessionHolder: BaseSessionHolder{
-			Timeout: timeout,
-		},
-		store: make(map[string]*Session, 0),
+		BaseSessionHolder: NewBaseSessionHolder(timeout),
+		store:             make(map[string]*Session, 0),
 	}
 }
 

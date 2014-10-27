@@ -36,9 +36,7 @@ NewSessionHolder creates a new redis-backed gob-encoded session holder
 */
 func NewSessionHolder() base.SessionHolder {
 	return &SessionHolder{
-		BaseSessionHolder: base.BaseSessionHolder{
-			Timeout: DEFAULT_SESSION_TIMEOUT,
-		},
+		BaseSessionHolder: base.NewBaseSessionHolder(DEFAULT_SESSION_TIMEOUT),
 	}
 }
 

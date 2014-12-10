@@ -104,6 +104,11 @@ type SessionHolder interface {
 	Save(c web.C, session *Session) error
 
 	/*
+	   Regenerate the sessionId for an existing session. This can be used against session fixation attacks
+	*/
+	RegenerateId(c web.C, session *Session) (string, error)
+	
+	/*
 		AddToResponse writes the session cookie into the http response
 	*/
 	AddToResponse(c web.C, session *Session, w http.ResponseWriter)
@@ -134,7 +139,7 @@ Create builds a session object, adds it to c.Env["session"] and marks it as dirt
 */
 func (sh *BaseSessionHolder) Create(c web.C) *Session {
 	session := &Session{
-		id:     sh.generateSessionId(),
+		id:     sh.GenerateSessionId(),
 		Values: make(map[string]interface{}, 0),
 		dirty:  true,
 	}
@@ -156,7 +161,7 @@ func (sh *BaseSessionHolder) GetSessionId(r *http.Request) string {
 	return cookie.Value
 }
 
-func (sh *BaseSessionHolder) generateSessionId() string {
+func (sh *BaseSessionHolder) GenerateSessionId() string {
 	a := uint64(sh.RandSource.Int63())
 	b := uint64(sh.RandSource.Int63())
 
@@ -214,6 +219,14 @@ func (sh *MemorySessionHolder) Destroy(c web.C, session *Session) error {
 func (sh *MemorySessionHolder) Save(c web.C, session *Session) error {
 	sh.store[session.Id()] = session
 	return nil
+}
+
+func (sh *MemorySessionHolder) RegenerateId(_ web.C, session *Session) (string, error) {
+	newSessionId := sh.GenerateSessionId()
+	delete(sh.store, session.Id())
+	session.SetId(newSessionId)
+	sh.store[newSessionId] = session
+	return newSessionId, nil
 }
 
 func SessionFromEnv(c *web.C) (*Session, bool) {

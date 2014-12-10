@@ -105,6 +105,21 @@ func (sh *SessionHolder) Save(c web.C, session *base.Session) error {
 	return err
 }
 
+func (sh *SessionHolder) RegenerateId(c web.C, session *base.Session) (string, error) {
+	sessionId    := session.Id()
+	newSessionId := sh.GenerateSessionId()
+	conn := c.Env["redis"].(redigo.Conn)
+	_, err := conn.Do("RENAME", sessionKey(sessionId), sessionKey(newSessionId))
+	
+	if err == nil {
+		/* renaming of session key succeeded in backend... update sessionId in our struct */
+		session.SetId(newSessionId)
+	} else {
+		newSessionId = sessionId
+	}
+	return newSessionId, err
+}
+
 func sessionKey(sessionId string) string {
 	return fmt.Sprintf("sess:%s", sessionId)
 }

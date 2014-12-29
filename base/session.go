@@ -186,10 +186,19 @@ func (sh *BaseSessionHolder) GenerateSessionId() string {
 	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36) + strconv.FormatUint(c, 36) + strconv.FormatUint(d, 36)
 }
 
+/*
+GetTimeout retrieves the currently set TTL for session objects 
+*/
 func (sh *BaseSessionHolder) GetTimeout() int {
 	return sh.Timeout
 }
 
+/*
+SetTimeout updates the TTL for session objects
+
+Note that the TTL will only be updated for existing sessions when the session is requested again, it might timeout if
+this request takes too long to occur
+*/
 func (sh *BaseSessionHolder) SetTimeout(timeout int) {
 	sh.Timeout = timeout;
 }

@@ -120,6 +120,14 @@ func (sh *SessionHolder) RegenerateId(c web.C, session *base.Session) (string, e
 	return newSessionId, err
 }
 
+func (sh *SessionHolder) ResetTTL(c web.C, session *base.Session) error {
+	sessionId := session.Id()
+	conn := c.Env["redis"].(redigo.Conn)
+	_, err := conn.Do("EXPIRE", sessionKey(sessionId), sh.Timeout)
+	
+	return err
+}
+
 func sessionKey(sessionId string) string {
 	return fmt.Sprintf("sess:%s", sessionId)
 }

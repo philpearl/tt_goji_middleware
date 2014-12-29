@@ -112,6 +112,15 @@ type SessionHolder interface {
 		AddToResponse writes the session cookie into the http response
 	*/
 	AddToResponse(c web.C, session *Session, w http.ResponseWriter)
+	
+	/* SetTimeout sets the timeout for session data */
+	SetTimeout(timeout int)
+	
+	/* GetTimeout retrieves the currently set timeout for session data */
+	GetTimeout() int
+	
+	/* ResetTTL can be implemented to reset the TTL for a session object if not dirty */
+	ResetTTL(c web.C, session *Session) error
 }
 
 /*
@@ -161,11 +170,28 @@ func (sh *BaseSessionHolder) GetSessionId(r *http.Request) string {
 	return cookie.Value
 }
 
+/*
+GenerateSessionId generates an id that can be used as sessionid
+
+Note this is not part of the SessionHolder interface - it is intended to
+be used as a building block by SessionHolder implementations
+*/
+
 func (sh *BaseSessionHolder) GenerateSessionId() string {
 	a := uint64(sh.RandSource.Int63())
 	b := uint64(sh.RandSource.Int63())
+	c := uint64(sh.RandSource.Int63())
+	d := uint64(sh.RandSource.Int63())
 
-	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36)
+	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36) + strconv.FormatUint(c, 36) + strconv.FormatUint(d, 36)
+}
+
+func (sh *BaseSessionHolder) GetTimeout() int {
+	return sh.Timeout
+}
+
+func (sh *BaseSessionHolder) SetTimeout(timeout int) {
+	sh.Timeout = timeout;
 }
 
 /*
@@ -175,10 +201,11 @@ Basically this means setting a cookie
 */
 func (sh *BaseSessionHolder) AddToResponse(c web.C, session *Session, w http.ResponseWriter) {
 	cookie := http.Cookie{
-		Name:   "sessionid",
-		Value:  session.Id(),
-		Path:   "/",
-		MaxAge: sh.Timeout,
+		Name:     "sessionid",
+		Value:    session.Id(),
+		Path:     "/",
+		HttpOnly: true,
+		Secure: true,
 	}
 	http.SetCookie(w, &cookie)
 }
@@ -221,12 +248,19 @@ func (sh *MemorySessionHolder) Save(c web.C, session *Session) error {
 	return nil
 }
 
+/*
+   Regenerate the session id of an existing session.
+*/
 func (sh *MemorySessionHolder) RegenerateId(_ web.C, session *Session) (string, error) {
 	newSessionId := sh.GenerateSessionId()
 	delete(sh.store, session.Id())
 	session.SetId(newSessionId)
 	sh.store[newSessionId] = session
 	return newSessionId, nil
+}
+
+func (sh *MemorySessionHolder) ResetTTL(_ web.C, session *Session) error {
+	return nil
 }
 
 func SessionFromEnv(c *web.C) (*Session, bool) {
@@ -273,7 +307,6 @@ func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) htt
 			} else {
 				if err != ErrorSessionNotFound {
 					log.Printf("error loading session %v", err)
-					http.Error(w, "Failed to load session data", http.StatusServiceUnavailable)
 				}
 			}
 			h.ServeHTTP(w, r)
@@ -281,10 +314,18 @@ func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) htt
 			// TODO: should this be saved via defer() so it even happens after a panic
 			// TODO: retrieve from response?
 			session, ok := SessionFromEnv(c)
-			if ok && session.IsDirty() {
-				err := sh.Save(*c, session)
-				if err != nil {
-					log.Printf("Failed to save session - %v", err)
+			if ok {
+				if session.IsDirty() {
+					err := sh.Save(*c, session)
+					if err != nil {
+						log.Printf("Failed to save session - %v", err)
+					}
+				} else {
+					/* not dirty but our sessionhandler might need to update the timeout/expiration */
+					err := sh.ResetTTL(*c, session)
+					if err != nil {
+						log.Printf("Failed to update TTL for session - %v", err)
+					}
 				}
 			}
 		}

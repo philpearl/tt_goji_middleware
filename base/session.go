@@ -242,9 +242,9 @@ Add the middleware as follows
 The middleware does not create new sessions.  To create a session do the following.
 
   session := c.Env["session"].(*Session)
-  if session != nil {
+  if session == nil {
 	  sh := c.Env["sessionholder"].(SessionHolder)
-	  session := sh.Create()
+	  session = sh.Create()
   }
 */
 func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) http.Handler {

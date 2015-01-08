@@ -262,10 +262,15 @@ func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) htt
 				session.SetDirty(false)
 				c.Env["session"] = session
 			} else {
-				if err != ErrorSessionNotFound {
+				if err == ErrorSessionNotFound {
+					session = sh.Create(*c)
+					// add sessionid to cookie
+					sh.AddToResponse(*c, session, w)
+				} else {
 					log.Printf("error loading session %v", err)
 					http.Error(w, "Failed to load session data", http.StatusServiceUnavailable)
 				}
+
 			}
 			h.ServeHTTP(w, r)
 

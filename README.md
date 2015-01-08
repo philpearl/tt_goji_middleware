@@ -29,3 +29,7 @@ In redis:
 - Ensure there's a redis connection in c.Env["redis"].  Connections come from a pool and are not opened until used.
 - A Redis based rate limiter that issues a single command to Redis per request.
 - A Redis based session store for the base session middleware
+
+## Contributing
+
+Pull requests are more than welcome!

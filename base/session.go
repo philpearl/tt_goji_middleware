@@ -257,8 +257,8 @@ func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) htt
 				} else {
 					log.Printf("error loading session %v", err)
 					http.Error(w, "Failed to load session data", http.StatusServiceUnavailable)
+					return
 				}
-
 			}
 			h.ServeHTTP(w, r)
 

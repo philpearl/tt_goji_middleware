@@ -294,14 +294,6 @@ Add the middleware as follows
   sh := redis.NewSessionHolder()
   mux.Use(redis.BuildSessionMiddleware(sh))
   // Add handlers that use sessions
-
-The middleware does not create new sessions.  To create a session do the following.
-
-  session := c.Env["session"].(*Session)
-  if session != nil {
-	  sh := c.Env["sessionholder"].(SessionHolder)
-	  session := sh.Create()
-  }
 */
 func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) http.Handler {
 	return func(c *web.C, h http.Handler) http.Handler {
@@ -314,8 +306,14 @@ func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) htt
 				session.SetDirty(false)
 				c.Env["session"] = session
 			} else {
-				if err != ErrorSessionNotFound {
+				if err == ErrorSessionNotFound {
+					session = sh.Create(*c)
+					// add sessionid to cookie
+					sh.AddToResponse(*c, session, w)
+				} else {
 					log.Printf("error loading session %v", err)
+					http.Error(w, "Failed to load session data", http.StatusServiceUnavailable)
+					return
 				}
 			}
 			h.ServeHTTP(w, r)

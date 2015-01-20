@@ -119,6 +119,12 @@ type SessionHolder interface {
 	/* GetTimeout retrieves the currently set timeout for session data */
 	GetTimeout() int
 	
+	/* Set HttpOnly cookie on/off */
+	SetHttpOnly(httpOnly bool)
+	
+	/* Set Secure cookie on/off */
+	SetSecure(secure bool)
+	
 	/* ResetTTL can be implemented to reset the TTL for a session object if not dirty */
 	ResetTTL(c web.C, session *Session) error
 }
@@ -129,6 +135,8 @@ BaseSessionHolder is a building block you can use to build a SessionHolder imple
 type BaseSessionHolder struct {
 	Timeout    int
 	RandSource rand.Source
+	HttpOnly   bool
+	Secure     bool
 }
 
 func NewBaseSessionHolder(timeout int) BaseSessionHolder {
@@ -140,6 +148,8 @@ func NewBaseSessionHolder(timeout int) BaseSessionHolder {
 	return BaseSessionHolder{
 		Timeout:    timeout,
 		RandSource: rand.NewSource(seed.Int64()),
+		HttpOnly:   false,
+		Secure:     false,
 	}
 }
 
@@ -180,10 +190,8 @@ be used as a building block by SessionHolder implementations
 func (sh *BaseSessionHolder) GenerateSessionId() string {
 	a := uint64(sh.RandSource.Int63())
 	b := uint64(sh.RandSource.Int63())
-	c := uint64(sh.RandSource.Int63())
-	d := uint64(sh.RandSource.Int63())
 
-	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36) + strconv.FormatUint(c, 36) + strconv.FormatUint(d, 36)
+	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36)
 }
 
 /*
@@ -200,7 +208,15 @@ Note that the TTL will only be updated for existing sessions when the session is
 this request takes too long to occur
 */
 func (sh *BaseSessionHolder) SetTimeout(timeout int) {
-	sh.Timeout = timeout;
+	sh.Timeout = timeout
+}
+
+func (sh *BaseSessionHolder) SetHttpOnly(httpOnly bool) {
+	sh.HttpOnly = httpOnly
+}
+
+func (sh *BaseSessionHolder) SetSecure(secure bool) {
+	sh.Secure = secure
 }
 
 /*
@@ -213,8 +229,8 @@ func (sh *BaseSessionHolder) AddToResponse(c web.C, session *Session, w http.Res
 		Name:     "sessionid",
 		Value:    session.Id(),
 		Path:     "/",
-		HttpOnly: true,
-		Secure: true,
+		HttpOnly: sh.HttpOnly,
+		Secure:   sh.Secure,
 	}
 	http.SetCookie(w, &cookie)
 }

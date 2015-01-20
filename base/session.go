@@ -104,9 +104,29 @@ type SessionHolder interface {
 	Save(c web.C, session *Session) error
 
 	/*
+	   Regenerate the sessionId for an existing session. This can be used against session fixation attacks
+	*/
+	RegenerateId(c web.C, session *Session) (string, error)
+	
+	/*
 		AddToResponse writes the session cookie into the http response
 	*/
 	AddToResponse(c web.C, session *Session, w http.ResponseWriter)
+	
+	/* SetTimeout sets the timeout for session data */
+	SetTimeout(timeout int)
+	
+	/* GetTimeout retrieves the currently set timeout for session data */
+	GetTimeout() int
+	
+	/* Set HttpOnly cookie on/off */
+	SetHttpOnly(httpOnly bool)
+	
+	/* Set Secure cookie on/off */
+	SetSecure(secure bool)
+	
+	/* ResetTTL can be implemented to reset the TTL for a session object if not dirty */
+	ResetTTL(c web.C, session *Session) error
 }
 
 /*
@@ -115,6 +135,8 @@ BaseSessionHolder is a building block you can use to build a SessionHolder imple
 type BaseSessionHolder struct {
 	Timeout    int
 	RandSource rand.Source
+	HttpOnly   bool
+	Secure     bool
 }
 
 func NewBaseSessionHolder(timeout int) BaseSessionHolder {
@@ -126,6 +148,8 @@ func NewBaseSessionHolder(timeout int) BaseSessionHolder {
 	return BaseSessionHolder{
 		Timeout:    timeout,
 		RandSource: rand.NewSource(seed.Int64()),
+		HttpOnly:   false,
+		Secure:     false,
 	}
 }
 
@@ -134,7 +158,7 @@ Create builds a session object, adds it to c.Env["session"] and marks it as dirt
 */
 func (sh *BaseSessionHolder) Create(c web.C) *Session {
 	session := &Session{
-		id:     sh.generateSessionId(),
+		id:     sh.GenerateSessionId(),
 		Values: make(map[string]interface{}, 0),
 		dirty:  true,
 	}
@@ -156,11 +180,43 @@ func (sh *BaseSessionHolder) GetSessionId(r *http.Request) string {
 	return cookie.Value
 }
 
-func (sh *BaseSessionHolder) generateSessionId() string {
+/*
+GenerateSessionId generates an id that can be used as sessionid
+
+Note this is not part of the SessionHolder interface - it is intended to
+be used as a building block by SessionHolder implementations
+*/
+
+func (sh *BaseSessionHolder) GenerateSessionId() string {
 	a := uint64(sh.RandSource.Int63())
 	b := uint64(sh.RandSource.Int63())
 
 	return strconv.FormatUint(a, 36) + strconv.FormatUint(b, 36)
+}
+
+/*
+GetTimeout retrieves the currently set TTL for session objects 
+*/
+func (sh *BaseSessionHolder) GetTimeout() int {
+	return sh.Timeout
+}
+
+/*
+SetTimeout updates the TTL for session objects
+
+Note that the TTL will only be updated for existing sessions when the session is requested again, it might timeout if
+this request takes too long to occur
+*/
+func (sh *BaseSessionHolder) SetTimeout(timeout int) {
+	sh.Timeout = timeout
+}
+
+func (sh *BaseSessionHolder) SetHttpOnly(httpOnly bool) {
+	sh.HttpOnly = httpOnly
+}
+
+func (sh *BaseSessionHolder) SetSecure(secure bool) {
+	sh.Secure = secure
 }
 
 /*
@@ -170,10 +226,11 @@ Basically this means setting a cookie
 */
 func (sh *BaseSessionHolder) AddToResponse(c web.C, session *Session, w http.ResponseWriter) {
 	cookie := http.Cookie{
-		Name:   "sessionid",
-		Value:  session.Id(),
-		Path:   "/",
-		MaxAge: sh.Timeout,
+		Name:     "sessionid",
+		Value:    session.Id(),
+		Path:     "/",
+		HttpOnly: sh.HttpOnly,
+		Secure:   sh.Secure,
 	}
 	http.SetCookie(w, &cookie)
 }
@@ -213,6 +270,21 @@ func (sh *MemorySessionHolder) Destroy(c web.C, session *Session) error {
 */
 func (sh *MemorySessionHolder) Save(c web.C, session *Session) error {
 	sh.store[session.Id()] = session
+	return nil
+}
+
+/*
+   Regenerate the session id of an existing session.
+*/
+func (sh *MemorySessionHolder) RegenerateId(_ web.C, session *Session) (string, error) {
+	newSessionId := sh.GenerateSessionId()
+	delete(sh.store, session.Id())
+	session.SetId(newSessionId)
+	sh.store[newSessionId] = session
+	return newSessionId, nil
+}
+
+func (sh *MemorySessionHolder) ResetTTL(_ web.C, session *Session) error {
 	return nil
 }
 
@@ -265,10 +337,18 @@ func BuildSessionMiddleware(sh SessionHolder) func(c *web.C, h http.Handler) htt
 			// TODO: should this be saved via defer() so it even happens after a panic
 			// TODO: retrieve from response?
 			session, ok := SessionFromEnv(c)
-			if ok && session.IsDirty() {
-				err := sh.Save(*c, session)
-				if err != nil {
-					log.Printf("Failed to save session - %v", err)
+			if ok {
+				if session.IsDirty() {
+					err := sh.Save(*c, session)
+					if err != nil {
+						log.Printf("Failed to save session - %v", err)
+					}
+				} else {
+					/* not dirty but our sessionhandler might need to update the timeout/expiration */
+					err := sh.ResetTTL(*c, session)
+					if err != nil {
+						log.Printf("Failed to update TTL for session - %v", err)
+					}
 				}
 			}
 		}

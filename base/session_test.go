@@ -71,7 +71,7 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 	sh.AddToResponse(c, s, w)
 
 	cookie := w.HeaderMap.Get("Set-Cookie")
-	if cookie != fmt.Sprintf("sessionid=%s; Path=/; Max-Age=30", s.Id()) {
+	if cookie != fmt.Sprintf("sessionid=%s; Path=/", s.Id()) {
 		t.Fatalf("Cookie not as expected - have %s", cookie)
 	}
 }
@@ -133,14 +133,14 @@ func TestSessionMiddleware(t *testing.T) {
 	}
 
 	// Build a request referencing the session with its new id
-	r, _ := http.NewRequest("GET", "/", nil)
+	r, _ = http.NewRequest("GET", "/", nil)
 	r.Header.Set("Cookie", fmt.Sprintf("sessionid=%s", s.Id()))
 
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 	})
 
-	w := httptest.NewRecorder()
+	w = httptest.NewRecorder()
 	// Serve the request
 	m(&c, h).ServeHTTP(w, r)
 

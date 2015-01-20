@@ -34,7 +34,7 @@ func TestSessionCreate(t *testing.T) {
 	sh.AddToResponse(c, s, w)
 
 	ch := w.HeaderMap.Get("Set-Cookie")
-	if ch != fmt.Sprintf("sessionid=%s; Path=/; Max-Age=2592000", s.Id()) {
+	if ch != fmt.Sprintf("sessionid=%s; Path=/", s.Id()) {
 		t.Fatalf("cookie header is %v", ch)
 	}
 

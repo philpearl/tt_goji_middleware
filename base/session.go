@@ -133,10 +133,11 @@ type SessionHolder interface {
 BaseSessionHolder is a building block you can use to build a SessionHolder implementation
 */
 type BaseSessionHolder struct {
-	Timeout    int
-	RandSource rand.Source
-	HttpOnly   bool
-	Secure     bool
+	Timeout          int
+	RandSource       rand.Source
+	HttpOnly         bool
+	Secure           bool
+	PersistentCookie bool
 }
 
 func NewBaseSessionHolder(timeout int) BaseSessionHolder {
@@ -146,10 +147,11 @@ func NewBaseSessionHolder(timeout int) BaseSessionHolder {
 	}
 
 	return BaseSessionHolder{
-		Timeout:    timeout,
-		RandSource: rand.NewSource(seed.Int64()),
-		HttpOnly:   false,
-		Secure:     false,
+		Timeout:          timeout,
+		RandSource:       rand.NewSource(seed.Int64()),
+		HttpOnly:         false,
+		Secure:           false,
+		PersistentCookie: true,
 	}
 }
 
@@ -211,12 +213,25 @@ func (sh *BaseSessionHolder) SetTimeout(timeout int) {
 	sh.Timeout = timeout
 }
 
+/*
+SetHTTPOnly allows setting/unsetting of HTTP only secured cookies 
+*/
 func (sh *BaseSessionHolder) SetHttpOnly(httpOnly bool) {
 	sh.HttpOnly = httpOnly
 }
 
+/*
+SetSecure allows setting/unsetting of HTTPS only / secure cookies
+*/
 func (sh *BaseSessionHolder) SetSecure(secure bool) {
 	sh.Secure = secure
+}
+
+/*
+SetPersistentCookie allows switching between persistent time out based cookies (MaxAge) and session lifetime cookies (no MaxAge)
+*/
+func (sh *BaseSessionHolder) SetPersistentCookie(persistent bool) {
+	sh.PersistentCookie = persistent
 }
 
 /*
@@ -231,6 +246,9 @@ func (sh *BaseSessionHolder) AddToResponse(c web.C, session *Session, w http.Res
 		Path:     "/",
 		HttpOnly: sh.HttpOnly,
 		Secure:   sh.Secure,
+	}
+	if sh.PersistentCookie {
+		cookie.MaxAge = sh.Timeout
 	}
 	http.SetCookie(w, &cookie)
 }

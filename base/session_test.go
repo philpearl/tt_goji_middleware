@@ -71,8 +71,17 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 	sh.AddToResponse(c, s, w)
 
 	cookie := w.HeaderMap.Get("Set-Cookie")
+	if cookie != fmt.Sprintf("sessionid=%s; Path=/; Max-Age=%d", s.Id(), sh.GetTimeout()) {
+		t.Fatalf("Persistent Cookie not as expected - have %s", cookie)
+	}
+	
+	w = httptest.NewRecorder()
+	sh.SetPersistentCookie(false)
+	sh.AddToResponse(c, s, w)
+	
+	cookie = w.HeaderMap.Get("Set-Cookie")
 	if cookie != fmt.Sprintf("sessionid=%s; Path=/", s.Id()) {
-		t.Fatalf("Cookie not as expected - have %s", cookie)
+		t.Fatalf("Session Cookie not as expected - have %s", cookie)
 	}
 }
 

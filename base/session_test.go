@@ -76,7 +76,7 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 	}
 	
 	w = httptest.NewRecorder()
-	sh.SetPersistentCookie(false)
+	sh.SetPersistentCookies(false)
 	sh.AddToResponse(c, s, w)
 	
 	cookie = w.HeaderMap.Get("Set-Cookie")

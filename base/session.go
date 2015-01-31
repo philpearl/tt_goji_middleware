@@ -228,9 +228,9 @@ func (sh *BaseSessionHolder) SetSecure(secure bool) {
 }
 
 /*
-SetPersistentCookie allows switching between persistent time out based cookies (MaxAge) and session lifetime cookies (no MaxAge)
+SetPersistentCookies allows switching between persistent time out based cookies (MaxAge) and session lifetime cookies (no MaxAge)
 */
-func (sh *BaseSessionHolder) SetPersistentCookie(persistent bool) {
+func (sh *BaseSessionHolder) SetPersistentCookies(persistent bool) {
 	sh.PersistentCookie = persistent
 }
 

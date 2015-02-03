@@ -71,8 +71,17 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 	sh.AddToResponse(c, s, w)
 
 	cookie := w.HeaderMap.Get("Set-Cookie")
-	if cookie != fmt.Sprintf("sessionid=%s; Path=/; Max-Age=30", s.Id()) {
-		t.Fatalf("Cookie not as expected - have %s", cookie)
+	if cookie != fmt.Sprintf("sessionid=%s; Path=/; Max-Age=%d", s.Id(), sh.GetTimeout()) {
+		t.Fatalf("Persistent Cookie not as expected - have %s", cookie)
+	}
+	
+	w = httptest.NewRecorder()
+	sh.SetPersistentCookies(false)
+	sh.AddToResponse(c, s, w)
+	
+	cookie = w.HeaderMap.Get("Set-Cookie")
+	if cookie != fmt.Sprintf("sessionid=%s; Path=/", s.Id()) {
+		t.Fatalf("Session Cookie not as expected - have %s", cookie)
 	}
 }
 
@@ -121,4 +130,31 @@ func TestSessionMiddleware(t *testing.T) {
 	if c.Env["session"].(*Session) != s {
 		t.Fatalf("session not added to c.Env")
 	}
+	
+	// store old sessionId
+	oldSessionId := s.Id();
+	// regenerate sessionId
+	sh.RegenerateId(c, s)
+	
+	// test if sessionId changed
+	if oldSessionId == s.Id() {
+		t.Fatalf("session ID did not change after regeneration request")
+	}
+
+	// Build a request referencing the session with its new id
+	r, _ = http.NewRequest("GET", "/", nil)
+	r.Header.Set("Cookie", fmt.Sprintf("sessionid=%s", s.Id()))
+
+	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	})
+
+	w = httptest.NewRecorder()
+	// Serve the request
+	m(&c, h).ServeHTTP(w, r)
+
+	if c.Env["session"].(*Session) != s {
+		t.Fatalf("session update not added to c.Env")
+	}
+	
 }

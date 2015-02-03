@@ -9,10 +9,14 @@ import (
 	"github.com/zenazn/goji/web"
 )
 
-func TestSession(t *testing.T) {
-	c := web.C{
-		Env: make(map[string]interface{}, 0),
+func makeEnv() web.C {
+	return web.C{
+		Env: make(map[interface{}]interface{}, 0),
 	}
+}
+
+func TestSession(t *testing.T) {
+	c := makeEnv()
 
 	sh := NewBaseSessionHolder(30)
 
@@ -59,9 +63,7 @@ func TestSession(t *testing.T) {
 }
 
 func TestBaseSessionHolderAddToResponse(t *testing.T) {
-	c := web.C{
-		Env: make(map[string]interface{}, 0),
-	}
+	c := makeEnv()
 
 	sh := NewBaseSessionHolder(30)
 
@@ -74,11 +76,11 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 	if cookie != fmt.Sprintf("sessionid=%s; Path=/; Max-Age=%d", s.Id(), sh.GetTimeout()) {
 		t.Fatalf("Persistent Cookie not as expected - have %s", cookie)
 	}
-	
+
 	w = httptest.NewRecorder()
 	sh.SetPersistentCookies(false)
 	sh.AddToResponse(c, s, w)
-	
+
 	cookie = w.HeaderMap.Get("Set-Cookie")
 	if cookie != fmt.Sprintf("sessionid=%s; Path=/", s.Id()) {
 		t.Fatalf("Session Cookie not as expected - have %s", cookie)
@@ -86,9 +88,7 @@ func TestBaseSessionHolderAddToResponse(t *testing.T) {
 }
 
 func TestBaseSessionHolderGetSessionId(t *testing.T) {
-	c := web.C{
-		Env: make(map[string]interface{}, 0),
-	}
+	c := makeEnv()
 
 	sh := NewBaseSessionHolder(30)
 
@@ -104,9 +104,7 @@ func TestBaseSessionHolderGetSessionId(t *testing.T) {
 }
 
 func TestSessionMiddleware(t *testing.T) {
-	c := web.C{
-		Env: make(map[string]interface{}, 0),
-	}
+	c := makeEnv()
 
 	sh := NewMemorySessionHolder(30)
 	m := BuildSessionMiddleware(sh)
@@ -130,12 +128,12 @@ func TestSessionMiddleware(t *testing.T) {
 	if c.Env["session"].(*Session) != s {
 		t.Fatalf("session not added to c.Env")
 	}
-	
+
 	// store old sessionId
-	oldSessionId := s.Id();
+	oldSessionId := s.Id()
 	// regenerate sessionId
 	sh.RegenerateId(c, s)
-	
+
 	// test if sessionId changed
 	if oldSessionId == s.Id() {
 		t.Fatalf("session ID did not change after regeneration request")
@@ -156,5 +154,5 @@ func TestSessionMiddleware(t *testing.T) {
 	if c.Env["session"].(*Session) != s {
 		t.Fatalf("session update not added to c.Env")
 	}
-	
+
 }

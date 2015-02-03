@@ -15,7 +15,7 @@ func TestThrottle(t *testing.T) {
 
 	var err error
 	c := &web.C{}
-	c.Env = make(map[string]interface{}, 0)
+	c.Env = make(map[interface{}]interface{}, 0)
 	c.Env["redis"], err = redigo.Dial("tcp", ":6379")
 	if err != nil {
 		t.Skipf("could not connect to redis")

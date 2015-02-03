@@ -16,7 +16,7 @@ func TestSessionCreate(t *testing.T) {
 		t.Skipf("Cannot connect to redis. %v", err)
 	}
 	c := web.C{
-		Env: map[string]interface{}{"redis": conn},
+		Env: map[interface{}]interface{}{"redis": conn},
 	}
 	sh := NewSessionHolder()
 

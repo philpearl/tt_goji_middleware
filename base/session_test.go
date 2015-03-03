@@ -62,6 +62,27 @@ func TestSession(t *testing.T) {
 	}
 }
 
+func TestLogout(t *testing.T) {
+	c := makeEnv()
+
+	sh := NewMemorySessionHolder(30)
+	c.Env["sessionholder"] = sh
+
+	s := sh.Create(c)
+
+	s1, ok := SessionFromEnv(&c)
+	if !ok || s1 != s {
+		t.Errorf("Didn't get correct session from env")
+	}
+
+	Logout(&c)
+
+	s1, ok = SessionFromEnv(&c)
+	if ok {
+		t.Errorf("Could still log in after logout")
+	}
+}
+
 func TestBaseSessionHolderAddToResponse(t *testing.T) {
 	c := makeEnv()
 

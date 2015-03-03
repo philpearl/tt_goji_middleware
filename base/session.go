@@ -107,24 +107,24 @@ type SessionHolder interface {
 	   Regenerate the sessionId for an existing session. This can be used against session fixation attacks
 	*/
 	RegenerateId(c web.C, session *Session) (string, error)
-	
+
 	/*
 		AddToResponse writes the session cookie into the http response
 	*/
 	AddToResponse(c web.C, session *Session, w http.ResponseWriter)
-	
+
 	/* SetTimeout sets the timeout for session data */
 	SetTimeout(timeout int)
-	
+
 	/* GetTimeout retrieves the currently set timeout for session data */
 	GetTimeout() int
-	
+
 	/* Set HttpOnly cookie on/off */
 	SetHttpOnly(httpOnly bool)
-	
+
 	/* Set Secure cookie on/off */
 	SetSecure(secure bool)
-	
+
 	/* ResetTTL can be implemented to reset the TTL for a session object if not dirty */
 	ResetTTL(c web.C, session *Session) error
 }
@@ -197,7 +197,7 @@ func (sh *BaseSessionHolder) GenerateSessionId() string {
 }
 
 /*
-GetTimeout retrieves the currently set TTL for session objects 
+GetTimeout retrieves the currently set TTL for session objects
 */
 func (sh *BaseSessionHolder) GetTimeout() int {
 	return sh.Timeout
@@ -214,7 +214,7 @@ func (sh *BaseSessionHolder) SetTimeout(timeout int) {
 }
 
 /*
-SetHTTPOnly allows setting/unsetting of HTTP only secured cookies 
+SetHTTPOnly allows setting/unsetting of HTTP only secured cookies
 */
 func (sh *BaseSessionHolder) SetHttpOnly(httpOnly bool) {
 	sh.HttpOnly = httpOnly
@@ -306,12 +306,33 @@ func (sh *MemorySessionHolder) ResetTTL(_ web.C, session *Session) error {
 	return nil
 }
 
+// SessionFromEnv() retrieves the session from the Goji context
 func SessionFromEnv(c *web.C) (*Session, bool) {
 	s, ok := c.Env["session"]
 	if ok && s != nil {
 		return s.(*Session), true
 	}
 	return nil, false
+}
+
+// SessionHolderFromEnv() retrieves the session holder from the Goji context
+func SessionHolderFromEnv(c *web.C) (SessionHolder, bool) {
+	sh, ok := c.Env["sessionholder"]
+	if ok && sh != nil {
+		return sh.(SessionHolder), true
+	}
+	return nil, false
+}
+
+// Logout() destroys the current session in the Goji context
+func Logout(c *web.C) {
+	s, ok := SessionFromEnv(c)
+	if ok {
+		sh, ok := SessionHolderFromEnv(c)
+		if ok {
+			sh.Destroy(*c, s)
+		}
+	}
 }
 
 /*

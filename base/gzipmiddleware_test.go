@@ -1,0 +1,76 @@
+package base
+
+import (
+	"compress/gzip"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestGzipError(t *testing.T) {
+	c := makeEnv()
+
+	w := httptest.NewRecorder()
+
+	h := GzipMiddleWare(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "bad stuff", http.StatusBadRequest)
+	}))
+
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+
+	h.ServeHTTP(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expect 400, get %d, %s", w.Code, w.Body.String())
+	}
+
+	if w.Body.String() != "bad stuff\n" {
+		t.Errorf("body not as expected.  have \"%s\"", w.Body.String())
+	}
+
+	if w.HeaderMap.Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Errorf("Content-Type not as expected - have %s", w.HeaderMap["Content-Type"])
+	}
+
+	if w.HeaderMap.Get("Content-Encoding") != "" {
+		t.Errorf("expected no encoding - have %v", w.HeaderMap)
+	}
+}
+
+func TestGzipOK(t *testing.T) {
+	c := makeEnv()
+
+	w := httptest.NewRecorder()
+
+	h := GzipMiddleWare(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("super things"))
+	}))
+
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+
+	h.ServeHTTP(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expect 200, get %d, %s", w.Code, w.Body.String())
+	}
+
+	gr, err := gzip.NewReader(w.Body)
+	if err != nil {
+		t.Errorf("couldn't create a gzip raader, %v", err)
+	}
+	body, err := ioutil.ReadAll(gr)
+	if err != nil {
+		t.Errorf("Couldn't read gzip content. %v", err)
+	}
+
+	if string(body) != "super things" {
+		t.Errorf("body not as expected.  have \"%s\"", body)
+	}
+
+	if w.HeaderMap.Get("Content-Encoding") != "gzip" {
+		t.Errorf("expected gzip encoding - have %v", w.HeaderMap)
+	}
+}

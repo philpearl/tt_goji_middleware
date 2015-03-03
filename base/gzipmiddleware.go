@@ -22,12 +22,14 @@ type gzipResponseWriter struct {
 func newGzipResponseWriter(wrapped http.ResponseWriter) *gzipResponseWriter {
 	return &gzipResponseWriter{
 		Wrapped: wrapped,
-		writer:  gzip.NewWriter(wrapped),
 	}
 }
 
 func (w *gzipResponseWriter) Close() {
-	w.writer.Close()
+	if w.writer != nil {
+		w.writer.Close()
+		w.writer = nil
+	}
 }
 
 func (w *gzipResponseWriter) Header() http.Header {
@@ -41,6 +43,10 @@ func (w *gzipResponseWriter) Write(data []byte) (int, error) {
 	}
 	if w.status == http.StatusOK {
 		// Only use our gzip wrapper for OK responses.
+		// The gzip writer writes to Wrapped as soon as it is allocated, so we defer creating it.
+		if w.writer == nil {
+			w.writer = gzip.NewWriter(w.Wrapped)
+		}
 		return w.writer.Write(data)
 	}
 	return w.Wrapped.Write(data)

@@ -8,8 +8,34 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/philpearl/tt_goji_middleware/base"
 	"github.com/zenazn/goji/web"
 )
+
+func TestNoSession(t *testing.T) {
+	db, err := sql.Open("postgres", "postgres://test:test@localhost:/test?sslmode=disable")
+	if err != nil {
+		t.Skipf("Cannot connect to postgres. %v", err)
+	}
+	c := web.C{
+		Env: map[interface{}]interface{}{"db": db},
+	}
+	sh, err := NewSessionHolder(db)
+	if err != nil {
+		t.Fatalf("failed to create session holder - %v", err)
+	}
+
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.AddCookie(&http.Cookie{
+		Name:  "sessionid",
+		Value: "zzpza",
+	})
+
+	_, err = sh.Get(c, r)
+	if err != base.ErrorSessionNotFound {
+		t.Fatalf("got error reading session from request, %v", err)
+	}
+}
 
 func TestSessionUpdate(t *testing.T) {
 	db, err := sql.Open("postgres", "postgres://test:test@localhost:/test?sslmode=disable")
@@ -37,7 +63,7 @@ func TestSessionUpdate(t *testing.T) {
 
 	err = sh.Save(c, s)
 	if err != nil {
-		t.Fatalf("failed to save session - %v", err)
+		t.Fatalf("failed to save session on second attempt - %v", err)
 	}
 
 	r, _ := http.NewRequest("GET", "/", nil)

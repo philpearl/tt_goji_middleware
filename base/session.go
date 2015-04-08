@@ -81,6 +81,8 @@ SessionHolder is an interface for a session repository.
 type SessionHolder interface {
 	/*
 	   Get the session associated with the current request, if there is one.
+
+	   Return ErrorSessionNotFound if there is no matching session
 	*/
 	Get(c web.C, r *http.Request) (*Session, error)
 

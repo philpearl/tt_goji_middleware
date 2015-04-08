@@ -22,11 +22,10 @@ const (
 /*
 SessionHolder is a Postgres-backed session store. It uses the postgres bytea data type and
 the gob encoding to store the session
-
-It requires an sql connection set up in c.Env["db"].
 */
 type SessionHolder struct {
 	base.BaseSessionHolder
+	db *sql.DB
 }
 
 /*
@@ -40,6 +39,7 @@ func NewSessionHolder(db *sql.DB) (base.SessionHolder, error) {
 
 	return &SessionHolder{
 		BaseSessionHolder: base.NewBaseSessionHolder(DEFAULT_SESSION_TIMEOUT),
+		db:                db,
 	}, nil
 }
 
@@ -52,14 +52,15 @@ func (sh *SessionHolder) Get(c web.C, r *http.Request) (*base.Session, error) {
 		return nil, base.ErrorSessionNotFound
 	}
 
-	db := c.Env["db"].(*sql.DB)
 	var session base.Session
 	values := sessionValues{}
 
-	err := db.QueryRow("SELECT content FROM sessions WHERE id=$1", sessionId).Scan(values)
+	err := sh.db.QueryRow("SELECT content FROM sessions WHERE id=$1", sessionId).Scan(values)
 	if err == nil {
 		session.Values = values
 		session.SetId(sessionId)
+	} else if err == sql.ErrNoRows {
+		err = base.ErrorSessionNotFound
 	}
 
 	return &session, err
@@ -71,9 +72,7 @@ Destroy deletes a session from postgres
 func (sh *SessionHolder) Destroy(c web.C, session *base.Session) error {
 	sessionId := session.Id()
 	delete(c.Env, "session")
-	db := c.Env["db"].(*sql.DB)
-
-	_, err := db.Exec("DELETE FROM sessions WHERE id=$1", sessionId)
+	_, err := sh.db.Exec("DELETE FROM sessions WHERE id=$1", sessionId)
 	return err
 }
 
@@ -82,25 +81,21 @@ Save a session to postgres
 */
 func (sh *SessionHolder) Save(c web.C, session *base.Session) error {
 	sessionId := session.Id()
-	db := c.Env["db"].(*sql.DB)
 
-	return runTransaction(db, func(tx *sql.Tx) {
-		_, err := db.Exec("INSERT INTO sessions (id, content) VALUES ($1, $2)", sessionId, sessionValues(session.Values))
-		if err != nil && isAlreadyExists(err, "sessions") {
-			_, err = db.Exec("UPDATE sessions SET content=$2 WHERE id=$1", sessionId, sessionValues(session.Values))
-		}
-		if err != nil {
-			panic(err)
-		}
-	})
+	// There is a potential race here if the insert fails because the session exists, but it is deleted
+	// before we can update it.
+	_, err := sh.db.Exec("INSERT INTO sessions (id, content) VALUES ($1, $2)", sessionId, sessionValues(session.Values))
+	if err != nil && isAlreadyExists(err, "sessions") {
+		_, err = sh.db.Exec("UPDATE sessions SET content=$2 WHERE id=$1", sessionId, sessionValues(session.Values))
+	}
+	return err
 }
 
 func (sh *SessionHolder) RegenerateId(c web.C, session *base.Session) (string, error) {
 	sessionId := session.Id()
 	newSessionId := sh.GenerateSessionId()
-	db := c.Env["db"].(*sql.DB)
 
-	_, err := db.Exec("UPDATE sessions SET id=$2 WHERE id=$1", sessionId, newSessionId)
+	_, err := sh.db.Exec("UPDATE sessions SET id=$2 WHERE id=$1", sessionId, newSessionId)
 
 	if err == nil {
 		// This all worked, use the new session Id

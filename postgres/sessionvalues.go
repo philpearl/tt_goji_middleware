@@ -13,6 +13,8 @@ type sessionValues map[string]interface{}
 
 func init() {
 	gob.Register(sessionValues{})
+	// Register this as well as is used by oAuth code
+	gob.Register(map[string]interface{}{})
 }
 
 // Value() converts a product into a string suitable for the SQL database

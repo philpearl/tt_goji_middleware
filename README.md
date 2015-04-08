@@ -7,6 +7,7 @@ Some simple Goji middleware I've found useful.  Find the documentation at http:/
 The middleware is arranged in packages based on external dependencies
 
 - base has no external dependencies except Goji
+- postgres depends on github.com/lib/pq
 - raven depends on github.com/kisielk/raven-go/raven
 - redis depends on github.com/garyburd/redigo/redis
 
@@ -21,6 +22,9 @@ In base:
 - A very simple GZIP
 - Strip a prefix from the url
 - Session middleware.
+
+In postgres:
+- A postgres based session store for the base session middleware
 
 In raven:
 - Catch panics, log them, send responses and report them to Sentry

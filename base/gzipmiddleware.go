@@ -36,12 +36,24 @@ func (w *gzipResponseWriter) Header() http.Header {
 	return w.Wrapped.Header()
 }
 
+func (w *gzipResponseWriter) shouldCompress() bool {
+	if w.status != http.StatusOK {
+		return false
+	}
+	ct := w.Header().Get("Content-Type")
+	// These image types are already compressed - compressing further will not be helpful
+	if ct == "image/gif" || ct == "image/png" || ct == "image/jpeg" {
+		return false
+	}
+	return true
+}
+
 func (w *gzipResponseWriter) Write(data []byte) (int, error) {
 	// We can't read what's written to our Wrapped response, so we need to track things ourselves
 	if !w.headerWritten {
 		w.WriteHeader(http.StatusOK)
 	}
-	if w.status == http.StatusOK {
+	if w.shouldCompress() {
 		// Only use our gzip wrapper for OK responses.
 		// The gzip writer writes to Wrapped as soon as it is allocated, so we defer creating it.
 		if w.writer == nil {
@@ -56,7 +68,7 @@ func (w *gzipResponseWriter) WriteHeader(status int) {
 	if !w.headerWritten {
 		w.headerWritten = true
 		w.status = status
-		if status == http.StatusOK {
+		if w.shouldCompress() {
 			// If the status is OK we will use gzip, so let the far end know
 			w.Wrapped.Header().Set("Content-Encoding", "gzip")
 		}

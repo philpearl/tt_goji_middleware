@@ -39,6 +39,44 @@ func TestGzipError(t *testing.T) {
 	}
 }
 
+func TestGzipImage(t *testing.T) {
+	tests := []struct {
+		ct string
+	}{
+		{ct: "image/gif"},
+		{ct: "image/jpeg"},
+		{ct: "image/png"},
+	}
+
+	for _, test := range tests {
+		c := makeEnv()
+
+		w := httptest.NewRecorder()
+
+		h := GzipMiddleWare(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", test.ct)
+			w.Write([]byte("super things"))
+		}))
+
+		r, _ := http.NewRequest("GET", "/", nil)
+		r.Header.Set("Accept-Encoding", "gzip")
+
+		h.ServeHTTP(w, r)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expect 200, get %d, %s", w.Code, w.Body.String())
+		}
+
+		if w.HeaderMap.Get("Content-Encoding") != "" {
+			t.Errorf("Content should not be encoded - encoding is %s", w.HeaderMap.Get("Content-Encoding"))
+		}
+
+		if w.Body.String() != "super things" {
+			t.Errorf("body not as expected.  have \"%s\"", w.Body.String())
+		}
+	}
+}
+
 func TestGzipOK(t *testing.T) {
 	c := makeEnv()
 

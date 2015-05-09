@@ -15,7 +15,8 @@ const (
 
 	TABLE_DEFINITION = `CREATE TABLE IF NOT EXISTS sessions (
 		id char(72) PRIMARY KEY,
-		content bytea
+		content bytea,
+		expires timestamp with time zone
 	)`
 )
 
@@ -84,9 +85,9 @@ func (sh *SessionHolder) Save(c web.C, session *base.Session) error {
 
 	// There is a potential race here if the insert fails because the session exists, but it is deleted
 	// before we can update it.
-	_, err := sh.db.Exec("INSERT INTO sessions (id, content) VALUES ($1, $2)", sessionId, sessionValues(session.Values))
+	_, err := sh.db.Exec("INSERT INTO sessions (id, content, expires) VALUES ($1, $2, now() + $3 * interval '1 second')", sessionId, sessionValues(session.Values), sh.Timeout)
 	if err != nil && isAlreadyExists(err, "sessions") {
-		_, err = sh.db.Exec("UPDATE sessions SET content=$2 WHERE id=$1", sessionId, sessionValues(session.Values))
+		_, err = sh.db.Exec("UPDATE sessions SET content=$2, expires=now() + $3 * interval '1 second' WHERE id=$1", sessionId, sessionValues(session.Values), sh.Timeout)
 	}
 	return err
 }
@@ -109,5 +110,6 @@ func (sh *SessionHolder) RegenerateId(c web.C, session *base.Session) (string, e
 
 func (sh *SessionHolder) ResetTTL(c web.C, session *base.Session) error {
 	// Need to implement a TTL...
-	return nil
+	_, err := sh.db.Exec("UPDATE sessions SET expires=now()+$2 * interval '1 second' WHERE id=$1", session.Id(), sh.Timeout)
+	return err
 }

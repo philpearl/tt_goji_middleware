@@ -38,6 +38,8 @@ func (w *gzipResponseWriter) Header() http.Header {
 
 func (w *gzipResponseWriter) shouldCompress() bool {
 	if w.status != http.StatusOK {
+		// Note this explicitly excludes gzipping 206 partial responses that would need careful handling in
+		// this layer.
 		return false
 	}
 	ct := w.Header().Get("Content-Type")

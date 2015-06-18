@@ -39,6 +39,37 @@ func TestGzipError(t *testing.T) {
 	}
 }
 
+func TestGzipRange(t *testing.T) {
+	c := makeEnv()
+
+	w := httptest.NewRecorder()
+
+	h := GzipMiddleWare(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Range", "bytes 2-4/11")
+		w.WriteHeader(http.StatusPartialContent)
+		w.Write([]byte("sup"))
+	}))
+
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.Header.Set("Accept-Encoding", "gzip")
+	r.Header.Set("Range", "2-4")
+
+	h.ServeHTTP(w, r)
+
+	if w.Code != http.StatusPartialContent {
+		t.Errorf("expect 206, get %d, %s", w.Code, w.Body.String())
+	}
+
+	if w.HeaderMap.Get("Content-Encoding") != "" {
+		t.Errorf("Content should not be encoded - encoding is %s", w.HeaderMap.Get("Content-Encoding"))
+	}
+
+	if w.Body.String() != "sup" {
+		t.Errorf("body not as expected.  have \"%s\"", w.Body.String())
+	}
+
+}
+
 func TestGzipImage(t *testing.T) {
 	tests := []struct {
 		ct string

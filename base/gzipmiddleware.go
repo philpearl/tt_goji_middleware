@@ -70,9 +70,11 @@ func (w *gzipResponseWriter) WriteHeader(status int) {
 	if !w.headerWritten {
 		w.headerWritten = true
 		w.status = status
-		if w.shouldCompress() {
-			// If the status is OK we will use gzip, so let the far end know
-			w.Wrapped.Header().Set("Content-Encoding", "gzip")
+		if !w.shouldCompress() && w.Wrapped.Header().Get("Content-Encoding") == "gzip" {
+			// We set gzip content encoding header provisionally so that file serving makes sensible
+			// decisions. If we decide we're not going to gzip after all then we delete
+			// the content encoding header.
+			w.Wrapped.Header().Del("Content-Encoding")
 		}
 	}
 	w.Wrapped.WriteHeader(status)
@@ -107,6 +109,9 @@ func GzipMiddleWare(c *web.C, h http.Handler) http.Handler {
 		if acceptsGzip(r) {
 			gw = newGzipResponseWriter(w)
 			w = gw
+
+			// Provisionally set gzip content encoding header.
+			w.Header().Set("Content-Encoding", "gzip")
 		}
 		h.ServeHTTP(w, r)
 

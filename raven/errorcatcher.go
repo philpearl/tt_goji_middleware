@@ -58,9 +58,9 @@ func BuildErrorCatcher(sentryDSN string) func(c *web.C, h http.Handler) http.Han
 					err.WriteResponse(w)
 					return
 				default:
-					http.Error(w, http.StatusText(500), 500)
 					log.Printf("Panic: %v\n", err)
 					debug.PrintStack()
+					http.Error(w, http.StatusText(500), 500)
 					return
 				}
 			}()

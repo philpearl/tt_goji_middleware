@@ -11,11 +11,11 @@ func TestHttpRedirect(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	h := AWSHTTPRedirect(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := AWSHTTPRedirect("fred.com")(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("Shouldn't get here")
 	}))
 
-	r, _ := http.NewRequest("GET", "http://fred.com/hat", nil)
+	r, _ := http.NewRequest("GET", "/hat", nil)
 	r.Header.Set("X-Forwarded-Proto", "http")
 
 	h.ServeHTTP(w, r)
@@ -35,11 +35,11 @@ func TestHttpRedirectNoRedirect(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	h := AWSHTTPRedirect(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	h := AWSHTTPRedirect("fred.com")(&c, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	r, _ := http.NewRequest("GET", "http://fred.com/hat", nil)
+	r, _ := http.NewRequest("GET", "/hat", nil)
 	r.Header.Set("X-Forwarded-Proto", "https")
 
 	h.ServeHTTP(w, r)

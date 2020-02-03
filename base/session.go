@@ -127,6 +127,8 @@ type SessionHolder interface {
 	/* Set Secure cookie on/off */
 	SetSecure(secure bool)
 
+	SetSameSite(ss http.SameSite)
+
 	/* ResetTTL can be implemented to reset the TTL for a session object if not dirty */
 	ResetTTL(c web.C, session *Session) error
 }

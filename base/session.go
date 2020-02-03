@@ -139,6 +139,7 @@ type BaseSessionHolder struct {
 	RandSource       rand.Source
 	HttpOnly         bool
 	Secure           bool
+	SameSite         http.SameSite
 	PersistentCookie bool
 }
 
@@ -229,6 +230,10 @@ func (sh *BaseSessionHolder) SetSecure(secure bool) {
 	sh.Secure = secure
 }
 
+func (sh *BaseSessionHolder) SetSameSite(ss http.SameSite) {
+	sh.SameSite = ss
+}
+
 /*
 SetPersistentCookies allows switching between persistent time out based cookies (MaxAge) and session lifetime cookies (no MaxAge)
 */
@@ -248,6 +253,7 @@ func (sh *BaseSessionHolder) AddToResponse(c web.C, session *Session, w http.Res
 		Path:     "/",
 		HttpOnly: sh.HttpOnly,
 		Secure:   sh.Secure,
+		SameSite: sh.SameSite,
 	}
 	if sh.PersistentCookie {
 		cookie.MaxAge = sh.Timeout
